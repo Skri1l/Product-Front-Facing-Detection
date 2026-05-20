@@ -1,5 +1,19 @@
 # Product Front-Facing Detection
 
+## 0) Quick Fix if “nothing works”
+If you see `ModuleNotFoundError: No module named 'cv2'`, install dependencies first from this project folder:
+
+```bash
+cd product_front_facing_detection
+pip install -r requirements.txt
+```
+
+Then run:
+
+```bash
+python main.py --input input_images --output output
+```
+
 ## 1) Problem Description
 In retail stores, products should face customers directly so labels are visible and shelf presentation is consistent. Incorrect product orientation can reduce visibility, weaken brand impact, and potentially reduce sales. This project builds a classical Computer Vision pipeline to automatically evaluate front-facing compliance from shelf images.
 
