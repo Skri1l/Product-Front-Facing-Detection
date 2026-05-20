@@ -1,9 +1,23 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
-import cv2
+try:
+    import cv2
+except ModuleNotFoundError as exc:  # pragma: no cover - runtime guard
+    if exc.name == "cv2":
+        print(
+            "[ERROR] Missing dependency: cv2 (OpenCV).\n"
+            "Install project dependencies first:\n"
+            "  pip install -r requirements.txt\n"
+            "Then run again, for example:\n"
+            "  python main.py --input input_images --output output",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+    raise
 
 from src.clean import clean_mask
 from src.config import Config
@@ -19,7 +33,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Product Front-Facing Detection")
     parser.add_argument("--input", required=True, type=Path, help="Input image folder")
     parser.add_argument("--output", required=True, type=Path, help="Output folder")
-    parser.add_argument("--min-area", type=int, default=1200)
+    parser.add_argument("--min-area", type=int, default=500)
     parser.add_argument("--pass-threshold", type=float, default=0.7)
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--segmentation-mode", default="combined", choices=["combined", "adaptive", "canny", "hsv"])
