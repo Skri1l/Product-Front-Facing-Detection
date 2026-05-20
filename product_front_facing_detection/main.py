@@ -1,23 +1,9 @@
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
-try:
-    import cv2
-except ModuleNotFoundError as exc:  # pragma: no cover - runtime guard
-    if exc.name == "cv2":
-        print(
-            "[ERROR] Missing dependency: cv2 (OpenCV).\n"
-            "Install project dependencies first:\n"
-            "  pip install -r requirements.txt\n"
-            "Then run again, for example:\n"
-            "  python main.py --input input_images --output output",
-            file=sys.stderr,
-        )
-        raise SystemExit(2)
-    raise
+import cv2
 
 from src.clean import clean_mask
 from src.config import Config
