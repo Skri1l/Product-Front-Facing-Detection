@@ -2,33 +2,56 @@ import cv2
 import numpy as np
 
 def enhanceImage(image):
-    # 1. Слегка размываем (Denoising), чтобы убить мелкий шум камеры, 
-    # сохраняя при этом резкими края самих объектов.
-    denoised = cv2.bilateralFilter(image, d=9, sigmaColor=75, sigmaSpace=75)
 
-    # 2. Переводим в LAB для выравнивания света
+    # =========================
+    # 1. Denoise (мягче)
+    # =========================
+    denoised = cv2.bilateralFilter(image, 7, 60, 60)
+
+    # =========================
+    # 2. LAB contrast enhancement
+    # =========================
     lab = cv2.cvtColor(denoised, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
 
-    # 3. Мягкий CLAHE
-    # Снижаем clipLimit до 3.0, чтобы не было "кислотности", 
-    # но размер сетки делаем больше (16x16), чтобы выровнять глобальные перепады света.
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(16, 16))
-    l_eq = clahe.apply(l)
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    l = clahe.apply(l)
 
-    # 4. Собираем обратно
-    lab_eq = cv2.merge((l_eq, a, b))
-    enhanced = cv2.cvtColor(lab_eq, cv2.COLOR_LAB2BGR)
+    # мягкая gamma коррекция вместо грубого shift
+    l = np.power(l / 255.0, 0.9) * 255.0
+    l = l.astype(np.uint8)
 
-    # 5. Легкое углубление теней (Gamma Correction)
-    # Гамма 1.2-1.3 отлично затемнит щели между продуктами, не сжигая блики.
-    gamma = 1.3
-    invGamma = 1.0 / gamma
-    table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
-    enhanced = cv2.LUT(enhanced, table)
+    lab = cv2.merge((l, a, b))
+    enhanced = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
 
-    # 6. Опционально: легкий blur, чтобы еще больше сгладить этикетки 
-    # перед этапом сегментации (помогает собрать продукт в одно "пятно")
-    enhanced = cv2.GaussianBlur(enhanced, (3, 3), 0)
+    # =========================
+    # 3. Illumination normalization (вместо shadow painting)
+    # =========================
+    gray = cv2.cvtColor(enhanced, cv2.COLOR_BGR2GRAY)
 
-    return enhanced
+    illumination = cv2.GaussianBlur(gray, (0, 0), 25)
+
+    # avoid division artifacts
+    illumination = illumination.astype(np.float32) + 1e-6
+    gray_f = gray.astype(np.float32)
+
+    normalized = gray_f / illumination
+    normalized = cv2.normalize(normalized, None, 0, 255, cv2.NORM_MINMAX)
+    normalized = normalized.astype(np.uint8)
+
+    # blend (не заменяем полностью!)
+    normalized_bgr = cv2.cvtColor(normalized, cv2.COLOR_GRAY2BGR)
+    result = cv2.addWeighted(enhanced, 0.7, normalized_bgr, 0.3, 0)
+
+    # =========================
+    # 4. Safe sharpening
+    # =========================
+    blur = cv2.GaussianBlur(result, (0, 0), 1.0)
+    result = cv2.addWeighted(result, 1.15, blur, -0.15, 0)
+
+    # =========================
+    # 5. Clamp (важно для моделей)
+    # =========================
+    result = np.clip(result, 0, 255).astype(np.uint8)
+
+    return result
