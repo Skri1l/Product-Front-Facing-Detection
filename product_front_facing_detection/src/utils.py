@@ -1,17 +1,32 @@
-from __future__ import annotations
-
-from pathlib import Path
-
+import os
 import cv2
 
 
-VALID_SUFFIXES = {".jpg", ".jpeg", ".png"}
+def create_directory(path):
+    """
+    Creates directory if it does not exist.
+    """
+    os.makedirs(path, exist_ok=True)
 
 
-def gather_images(input_dir: Path) -> list[Path]:
-    return sorted([p for p in input_dir.iterdir() if p.is_file() and p.suffix.lower() in VALID_SUFFIXES])
+def read_image(image_path):
+    """
+    Reads image from disk.
+    """
+
+    image = cv2.imread(str(image_path))
+
+    if image is None:
+        raise FileNotFoundError(
+            f"Cannot open image: {image_path}"
+        )
+
+    return image
 
 
-def save_image(path: Path, image):
-    path.parent.mkdir(parents=True, exist_ok=True)
+def save_image(path, image):
+    """
+    Saves image to disk.
+    """
+
     cv2.imwrite(str(path), image)
