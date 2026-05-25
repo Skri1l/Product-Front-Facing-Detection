@@ -1,5 +1,6 @@
 import os
 
+from src.enhance import enhanceImage
 from src.segment import segment_products
 from src.clean import cleanProducts
 from src.detect import (detectProducts, drawDetections)
@@ -13,6 +14,11 @@ from src.utils import (
 INPUT_DIR = "input_images"
 
 OUTPUT_DIR = "outputs"
+ENHANCE_DIR = os.path.join(
+    OUTPUT_DIR,
+    "enhance"
+)
+
 SEGMENTATION_DIR = os.path.join(
     OUTPUT_DIR,
     "segmentation"
@@ -30,6 +36,10 @@ DETECT_DIR = os.path.join(
 
 
 def process_image(image_name):
+    image_name_without_extension = os.path.splitext(
+        image_name
+    )[0]
+
     input_path = os.path.join(
         INPUT_DIR,
         image_name
@@ -38,15 +48,20 @@ def process_image(image_name):
     image = read_image(input_path)
 
     # Enhance Start
-    # Ivan adds picture enhancement here
+    enhancedImage = enhanceImage(image)
+
+    enhancedPath = os.path.join(
+        ENHANCE_DIR,
+        f"{image_name_without_extension}_enhanced.png"
+    )
+
+    save_image(enhancedPath, enhancedImage)
+
+    print(f"Enhanced: {image_name}")
     # Enhance End
 
     # Segmentation Start
-    segmentation_mask = segment_products(image)
-
-    image_name_without_extension = os.path.splitext(
-        image_name
-    )[0]
+    segmentation_mask = segment_products(enhancedImage)
 
     output_path = os.path.join(
         SEGMENTATION_DIR,
@@ -86,6 +101,7 @@ def process_image(image_name):
 
 
 def main():
+    create_directory(ENHANCE_DIR)
     create_directory(SEGMENTATION_DIR)
     create_directory(CLEAR_DIR)
     create_directory(DETECT_DIR)
