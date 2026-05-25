@@ -53,10 +53,7 @@ def process_image(image_name):
     # Segmentation End
 
     # Clean Start
-    cleanedImage = cleanProducts(output_path,
-                                 open_kernel = (2, 2),
-                                 close_kernel = (3, 3),
-                                 dilate_kernel = (2, 2))
+    cleanedImage = cleanProducts(output_path)
 
     cleanedImageOutput = os.path.join(
         CLEAR_DIR,
