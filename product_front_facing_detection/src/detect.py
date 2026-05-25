@@ -2,96 +2,35 @@ import cv2
 import numpy as np
 
 
-# -------------------------
-# 1. CLEAN MASK (NO MORPH OVERKILL)
-# -------------------------
-def preprocess(mask):
-    mask = (mask > 0).astype(np.uint8)
+def detectProducts(image, mask, min_area=150, max_area_ratio=0.5):
+    mask = (mask > 0).astype(np.uint8) * 255
 
-    # лёгкое сглаживание, НЕ закрываем всё подряд
-    mask = cv2.GaussianBlur(mask.astype(np.float32), (5, 5), 0)
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask)
 
-    return mask
-
-
-# -------------------------
-# 2. FIND ROWS VIA Y PROJECTION
-# -------------------------
-def find_rows(mask, thresh=0.2):
-    proj = np.sum(mask, axis=1) / mask.shape[1]
-
-    rows = []
-    in_row = False
-    start = 0
-
-    for i, v in enumerate(proj):
-        if v > thresh and not in_row:
-            start = i
-            in_row = True
-        elif v <= thresh and in_row:
-            end = i
-            rows.append((start, end))
-            in_row = False
-
-    if in_row:
-        rows.append((start, len(proj) - 1))
-
-    return rows
-
-
-# -------------------------
-# 3. FIND OBJECT COLUMNS VIA X PROJECTION
-# -------------------------
-def find_columns(row_mask, thresh=0.2):
-    proj = np.sum(row_mask, axis=0) / row_mask.shape[0]
-
-    cols = []
-    in_col = False
-    start = 0
-
-    for i, v in enumerate(proj):
-        if v > thresh and not in_col:
-            start = i
-            in_col = True
-        elif v <= thresh and in_col:
-            end = i
-            cols.append((start, end))
-            in_col = False
-
-    if in_col:
-        cols.append((start, len(proj) - 1))
-
-    return cols
-
-
-# -------------------------
-# 4. MAIN DETECTION
-# -------------------------
-def detectProducts(image, mask):
-    mask = preprocess(mask)
-
-    rows = find_rows(mask)
+    h_img, w_img = mask.shape[:2]
+    img_area = h_img * w_img
 
     detections = []
 
-    for y1, y2 in rows:
-        row_mask = mask[y1:y2, :]
+    for i in range(1, num_labels):
+        x, y, w, h, area = stats[i]
 
-        cols = find_columns(row_mask)
+        if area < min_area:
+            continue
 
-        for x1, x2 in cols:
-            region = mask[y1:y2, x1:x2]
+        if area > img_area * max_area_ratio:
+            continue
 
-            density = np.mean(region)
+        aspect = w / (h + 1e-6)
 
-            # 🔥 фильтр пустых зон
-            if density < 0.15:
-                continue
+        if aspect < 0.1 or aspect > 10:
+            continue
 
-            detections.append({
-                "bbox": (x1, y1, x2, y2),
-                "confidence": float(density)
-            })
+        detections.append({
+            "bbox": (x, y, x + w, y + h),
+            "area": area,
+            "confidence": 1.0
+        })
 
     return detections
 

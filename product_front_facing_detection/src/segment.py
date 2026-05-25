@@ -1,39 +1,50 @@
 import cv2
 import numpy as np
 
-def segment_products(enhanced_img):
-    """
-    Выполняет сегментацию изображения.
-    Возвращает бинарную маску (0/255).
-    """
+def segment_products(img):
 
-    # --- 1. Перевод в HSV ---
-    hsv = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2HSV)
+    if img is None:
+        raise ValueError("Image is None")
 
-    # --- 2. Цветовые диапазоны для продуктов ---
-    # Красные банки (Coca-Cola)
-    red1 = cv2.inRange(hsv, (0, 80, 80), (10, 255, 255))
-    red2 = cv2.inRange(hsv, (170, 80, 80), (180, 255, 255))
-    red_mask = red1 | red2
+    # --- 1. BGR safety ---
+    if len(img.shape) == 2:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
-    # Синие банки (Pepsi)
-    blue_mask = cv2.inRange(hsv, (90, 80, 80), (130, 255, 255))
+    # --- 2. убираем текст/этикетки (очень важно) ---
+    # bilateral сохраняет границы бутылок, но убирает шум текста
+    smooth = cv2.bilateralFilter(img, 9, 75, 75)
 
-    # Жёлтые/зелёные (Lipton, Sprite)
-    yellow_mask = cv2.inRange(hsv, (15, 80, 80), (35, 255, 255))
-    green_mask = cv2.inRange(hsv, (35, 80, 80), (85, 255, 255))
+    gray = cv2.cvtColor(smooth, cv2.COLOR_BGR2GRAY)
 
-    # Белые/серые (молочные продукты)
-    white_mask = cv2.inRange(hsv, (0, 0, 180), (180, 40, 255))
+    # --- 3. выделяем крупные структуры (НЕ края!) ---
+    # adaptive threshold лучше чем Canny для полок
+    mask = cv2.adaptiveThreshold(
+        gray,
+        255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY_INV,
+        35,
+        5
+    )
 
-    # --- 3. Объединение всех масок ---
-    color_mask = red_mask | blue_mask | yellow_mask | green_mask | white_mask
+    # --- 4. убираем точки (noise) ---
+    kernel_small = np.ones((3, 3), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel_small, iterations=1)
 
-    # --- 4. Fallback: Otsu thresholding ---
-    gray = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2GRAY)
-    _, otsu_mask = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # --- 5. закрываем разрывы в объектах ---
+    kernel_med = np.ones((7, 7), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_med, iterations=2)
 
-    # --- 5. Итоговая маска ---
-    final_mask = cv2.bitwise_or(color_mask, otsu_mask)
+    # --- 6. убираем мелкие компоненты ---
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask)
 
-    return final_mask
+    clean = np.zeros_like(mask)
+
+    for i in range(1, num_labels):
+        area = stats[i, cv2.CC_STAT_AREA]
+
+        # важно: не завышать, иначе убьёшь бутылки
+        if area > 1000:
+            clean[labels == i] = 255
+
+    return clean
