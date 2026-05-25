@@ -1,57 +1,46 @@
 import cv2
 import numpy as np
 
-def segment_products(img):
+def segment_products(enhanced_img):
     """
-    Сегментация продуктов + очистка + вертикальное объединение масок
+    Выполняет сегментацию изображения.
+    Возвращает бинарную маску (0/255).
     """
 
-    if img is None:
-        raise ValueError("Image is None")
+    hsv = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2HSV)
 
-    # --- 1. гарантируем BGR ---
-    if len(img.shape) == 2:
-        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    # --- 1. Цветовые маски продуктов ---
+    red1 = cv2.inRange(hsv, (0, 80, 80), (10, 255, 255))
+    red2 = cv2.inRange(hsv, (170, 80, 80), (180, 255, 255))
+    red_mask = red1 | red2
 
-    # --- 2. мягкое подавление шума (важно для этикеток) ---
-    smooth = cv2.bilateralFilter(img, 9, 75, 75)
+    blue_mask = cv2.inRange(hsv, (90, 80, 80), (130, 255, 255))
 
-    gray = cv2.cvtColor(smooth, cv2.COLOR_BGR2GRAY)
+    yellow_mask = cv2.inRange(hsv, (15, 80, 80), (35, 255, 255))
+    green_mask = cv2.inRange(hsv, (35, 80, 80), (85, 255, 255))
 
-    # --- 3. бинаризация (лучше чем Canny для твоего кейса) ---
-    mask = cv2.adaptiveThreshold(
-        gray,
-        255,
-        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY_INV,
-        35,
-        5
+    white_mask = cv2.inRange(hsv, (0, 0, 180), (180, 40, 255))
+
+    color_mask = red_mask | blue_mask | yellow_mask | green_mask | white_mask
+
+    # --- 2. Маска "фона" (черные / серые / тени) ---
+    # ВАЖНО: это ключевая часть
+    dark_mask = cv2.inRange(hsv, (0, 0, 0), (180, 70, 80))
+    #            H    S   V      H   S   V
+    # low V  -> темные области (полки, тени)
+    # low S  -> серые поверхности
+
+    # --- 3. Убираем фон из цветовой маски ---
+    color_mask = cv2.bitwise_and(color_mask, cv2.bitwise_not(dark_mask))
+
+    # --- 4. Otsu fallback (тоже чистим от темного) ---
+    gray = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2GRAY)
+    _, otsu_mask = cv2.threshold(
+        gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
     )
+    otsu_mask = cv2.bitwise_and(otsu_mask, cv2.bitwise_not(dark_mask))
 
-    # --- 4. убрать мелкий шум (точки) ---
-    kernel_small = np.ones((3, 3), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel_small, iterations=1)
+    # --- 5. Итог ---
+    final_mask = cv2.bitwise_or(color_mask, otsu_mask)
 
-    # --- 5. закрыть разрывы внутри объектов ---
-    kernel_med = np.ones((7, 7), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_med, iterations=2)
-
-    # --- 6. фильтрация маленьких объектов (этикетки/шум) ---
-    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask)
-
-    clean = np.zeros_like(mask)
-
-    for i in range(1, num_labels):
-        area = stats[i, cv2.CC_STAT_AREA]
-
-        if area > 1000:   # регулируется под сцену
-            clean[labels == i] = 255
-
-    # --- 7. ВЕРТИКАЛЬНОЕ ОБЪЕДИНЕНИЕ ПРОДУКТОВ ---
-    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 25))
-    clean = cv2.morphologyEx(clean, cv2.MORPH_CLOSE, vertical_kernel, iterations=1)
-
-    # --- 8. финальная нормализация ---
-    clean = cv2.threshold(clean, 127, 255, cv2.THRESH_BINARY)[1]
-
-    return clean
+    return final_mask
