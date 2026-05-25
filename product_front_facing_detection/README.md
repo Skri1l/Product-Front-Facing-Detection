@@ -38,7 +38,7 @@ python main.py --input input_images --output output
 ```
 Optional:
 ```bash
-python main.py --input input_images --output output --min-area 1500 --pass-threshold 0.7 --debug
+python main.py --input input_images --output output --min-area 500 --pass-threshold 0.7 --debug
 ```
 
 ## 6) Input
