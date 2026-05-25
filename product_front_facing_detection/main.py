@@ -2,6 +2,7 @@ import os
 
 from src.segment import segment_products
 from src.clean import cleanProducts
+from src.detect import (detectProducts, drawDetections)
 from src.utils import (
     create_directory,
     read_image,
@@ -20,6 +21,11 @@ SEGMENTATION_DIR = os.path.join(
 CLEAR_DIR = os.path.join(
     OUTPUT_DIR,
     "clear"
+)
+
+DETECT_DIR = os.path.join(
+    OUTPUT_DIR,
+    "detect"
 )
 
 
@@ -65,10 +71,24 @@ def process_image(image_name):
     print(f"Cleaned: {image_name}")
     # Clean End
 
+    # Detect Start
+    detections = detectProducts(image, mask=cleanedImage)
+
+    detection_vis = drawDetections(image, detections)
+
+    save_image(
+        os.path.join(DETECT_DIR, f"{image_name_without_extension}_detected.png"),
+        detection_vis
+    )
+
+    print(f"Detected: {image_name}")
+    # Detect End
+
 
 def main():
     create_directory(SEGMENTATION_DIR)
     create_directory(CLEAR_DIR)
+    create_directory(DETECT_DIR)
 
     image_files = [
         file for file in os.listdir(INPUT_DIR)
