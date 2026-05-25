@@ -1,37 +1,39 @@
-from __future__ import annotations
-
 import cv2
 import numpy as np
 
-from .config import Config
+def segment_products(enhanced_img):
+    """
+    Выполняет сегментацию изображения.
+    Возвращает бинарную маску (0/255).
+    """
 
+    # --- 1. Перевод в HSV ---
+    hsv = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2HSV)
 
-def segment_products(enhanced_image: np.ndarray, config: Config) -> np.ndarray:
-    gray = cv2.cvtColor(enhanced_image, cv2.COLOR_BGR2GRAY)
-    gray_blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    # --- 2. Цветовые диапазоны для продуктов ---
+    # Красные банки (Coca-Cola)
+    red1 = cv2.inRange(hsv, (0, 80, 80), (10, 255, 255))
+    red2 = cv2.inRange(hsv, (170, 80, 80), (180, 255, 255))
+    red_mask = red1 | red2
 
-    otsu = cv2.threshold(gray_blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-    adaptive = cv2.adaptiveThreshold(gray_blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2)
+    # Синие банки (Pepsi)
+    blue_mask = cv2.inRange(hsv, (90, 80, 80), (130, 255, 255))
 
-    grad_x = cv2.Sobel(gray_blur, cv2.CV_16S, 1, 0, ksize=3)
-    grad_y = cv2.Sobel(gray_blur, cv2.CV_16S, 0, 1, ksize=3)
-    grad = cv2.convertScaleAbs(cv2.addWeighted(cv2.convertScaleAbs(grad_x), 0.5, cv2.convertScaleAbs(grad_y), 0.5, 0))
-    edges = cv2.Canny(gray_blur, 40, 140)
-    edges = cv2.bitwise_or(edges, cv2.threshold(grad, 40, 255, cv2.THRESH_BINARY)[1])
-    edges = cv2.dilate(edges, np.ones((3, 3), np.uint8), iterations=1)
+    # Жёлтые/зелёные (Lipton, Sprite)
+    yellow_mask = cv2.inRange(hsv, (15, 80, 80), (35, 255, 255))
+    green_mask = cv2.inRange(hsv, (35, 80, 80), (85, 255, 255))
 
-    hsv = cv2.cvtColor(enhanced_image, cv2.COLOR_BGR2HSV)
-    sat_mask = cv2.inRange(hsv[:, :, 1], 28, 255)
+    # Белые/серые (молочные продукты)
+    white_mask = cv2.inRange(hsv, (0, 0, 180), (180, 40, 255))
 
-    if config.segmentation_mode == "adaptive":
-        mask = adaptive
-    elif config.segmentation_mode == "canny":
-        mask = edges
-    elif config.segmentation_mode == "hsv":
-        mask = sat_mask
-    else:
-        base = cv2.bitwise_or(otsu, adaptive)
-        base = cv2.bitwise_or(base, edges)
-        mask = cv2.bitwise_or(base, sat_mask)
+    # --- 3. Объединение всех масок ---
+    color_mask = red_mask | blue_mask | yellow_mask | green_mask | white_mask
 
-    return cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)[1]
+    # --- 4. Fallback: Otsu thresholding ---
+    gray = cv2.cvtColor(enhanced_img, cv2.COLOR_BGR2GRAY)
+    _, otsu_mask = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    # --- 5. Итоговая маска ---
+    final_mask = cv2.bitwise_or(color_mask, otsu_mask)
+
+    return final_mask
