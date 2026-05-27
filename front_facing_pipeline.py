@@ -17,7 +17,7 @@ INPUT_DIR = os.path.join(
     "input_images"
 )
 
-OUTPUT_DIR = os.path.join(BASE_DIR, "outputs", "front_facing_pipeline")
+OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
 ORIGINAL_DIR = os.path.join(OUTPUT_DIR, "01_original")
 ENHANCED_DIR = os.path.join(OUTPUT_DIR, "02_enhanced")
 SEGMENT_DIR = os.path.join(OUTPUT_DIR, "03_segmentation_mask")
