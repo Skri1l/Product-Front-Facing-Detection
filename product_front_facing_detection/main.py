@@ -1,6 +1,9 @@
 import os
 
+from src.enhance import enhanceImage
 from src.segment import segment_products
+from src.clean import cleanProducts
+from src.detect import (detectProducts, drawDetections)
 from src.utils import (
     create_directory,
     read_image,
@@ -11,13 +14,32 @@ from src.utils import (
 INPUT_DIR = "input_images"
 
 OUTPUT_DIR = "outputs"
+ENHANCE_DIR = os.path.join(
+    OUTPUT_DIR,
+    "enhance"
+)
+
 SEGMENTATION_DIR = os.path.join(
     OUTPUT_DIR,
     "segmentation"
 )
 
+CLEAR_DIR = os.path.join(
+    OUTPUT_DIR,
+    "clear"
+)
+
+DETECT_DIR = os.path.join(
+    OUTPUT_DIR,
+    "detect"
+)
+
 
 def process_image(image_name):
+    image_name_without_extension = os.path.splitext(
+        image_name
+    )[0]
+
     input_path = os.path.join(
         INPUT_DIR,
         image_name
@@ -25,11 +47,21 @@ def process_image(image_name):
 
     image = read_image(input_path)
 
-    segmentation_mask = segment_products(image)
+    # Enhance Start
+    enhancedImage = enhanceImage(image)
 
-    image_name_without_extension = os.path.splitext(
-        image_name
-    )[0]
+    enhancedPath = os.path.join(
+        ENHANCE_DIR,
+        f"{image_name_without_extension}_enhanced.png"
+    )
+
+    save_image(enhancedPath, enhancedImage)
+
+    print(f"Enhanced: {image_name}")
+    # Enhance End
+
+    # Segmentation Start
+    segmentation_mask = segment_products(enhancedImage)
 
     output_path = os.path.join(
         SEGMENTATION_DIR,
@@ -39,10 +71,40 @@ def process_image(image_name):
     save_image(output_path, segmentation_mask)
 
     print(f"Segmented: {image_name}")
+    # Segmentation End
+
+    # Clean Start
+    cleanedImage = cleanProducts(output_path)
+
+    cleanedImageOutput = os.path.join(
+        CLEAR_DIR,
+        f"{image_name_without_extension}_cleaned.png"
+    )
+
+    save_image(cleanedImageOutput, cleanedImage)
+
+    print(f"Cleaned: {image_name}")
+    # Clean End
+
+    # Detect Start
+    detections = detectProducts(image, mask=cleanedImage)
+
+    detection_vis = drawDetections(image, detections)
+
+    save_image(
+        os.path.join(DETECT_DIR, f"{image_name_without_extension}_detected.png"),
+        detection_vis
+    )
+
+    print(f"Detected: {image_name}")
+    # Detect End
 
 
 def main():
+    create_directory(ENHANCE_DIR)
     create_directory(SEGMENTATION_DIR)
+    create_directory(CLEAR_DIR)
+    create_directory(DETECT_DIR)
 
     image_files = [
         file for file in os.listdir(INPUT_DIR)
