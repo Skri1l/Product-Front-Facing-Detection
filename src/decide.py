@@ -1,3 +1,6 @@
+MODULE_NAME = "Decide"
+
+
 import numpy as np
 import cv2
 
@@ -16,13 +19,7 @@ def clamp_bbox(bbox, image_shape):
 
 
 def classify_front_facing(enhanced, cleaned_mask, bbox):
-    """
-    Heuristic front-facing decision.
-
-    Idea:
-    A product is probably front-facing if its central area contains enough
-    visible label information: color, contrast, edges, and mask coverage.
-    """
+    print(f"{MODULE_NAME}: Classifying front facing...")
     x1, y1, x2, y2 = clamp_bbox(bbox, enhanced.shape)
     crop = enhanced[y1:y2, x1:x2]
     mask_crop = cleaned_mask[y1:y2, x1:x2]
@@ -87,10 +84,12 @@ def classify_front_facing(enhanced, cleaned_mask, bbox):
     else:
         label = "not-front/uncertain"
 
+    print(f"{MODULE_NAME}: Classified - {label} : {score}")
     return label, float(score)
 
 
 def make_decision(enhanced, cleaned_mask, detections):
+    print(f"{MODULE_NAME}: Making decision...")
     product_results = []
     front_count = 0
 
@@ -118,7 +117,8 @@ def make_decision(enhanced, cleaned_mask, detections):
         "decision": final_decision,
         "threshold_percent": PASS_THRESHOLD_PERCENT
     }
-
+    
+    print(f"{MODULE_NAME}: Decision made {product_results} {summary}")
     return product_results, summary
 
 

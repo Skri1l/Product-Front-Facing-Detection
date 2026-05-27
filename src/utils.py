@@ -1,3 +1,5 @@
+MODULE_NAME = "Utils"
+
 import os
 import cv2
 
@@ -23,15 +25,18 @@ def make_dirs():
         DETECT_DIR,
         DECISION_DIR,
     ]:
+        print(f"{MODULE_NAME}: Create dir {path}")
         os.makedirs(path, exist_ok=True)
 
 
 def read_image(path):
+    print(f"{MODULE_NAME}: Read images by {path}")
     image = cv2.imread(path)
     if image is None:
-        raise FileNotFoundError(f"Cannot open image: {path}")
+        raise FileNotFoundError(f"{MODULE_NAME}: Cannot open image: {path}")
     return image
 
 
 def save_image(path, image):
+    print(f"{MODULE_NAME}: Save image to {path}")
     cv2.imwrite(path, image)

@@ -1,11 +1,10 @@
+MODULE_NAME = "Segment"
+
 import cv2
 
 
 def segment_products(enhanced):
-    """
-    Create a binary mask of visually relevant product/label regions.
-    It uses HSV color segmentation + edge-based segmentation.
-    """
+    print(f"{MODULE_NAME}: Image segmentation...")
     hsv = cv2.cvtColor(enhanced, cv2.COLOR_BGR2HSV)
 
     # Colorful labels/products
@@ -29,4 +28,5 @@ def segment_products(enhanced):
     edges = cv2.dilate(edges, edge_kernel, iterations=1)
 
     mask = cv2.bitwise_or(color_mask, edges)
+    print(f"{MODULE_NAME}: Image segmented")
     return mask

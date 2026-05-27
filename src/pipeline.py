@@ -21,7 +21,9 @@ from src.decide import make_decision, draw_detection_result, write_decision_txt
 import os
 import csv
 
+
 def run_pipeline():
+    print("Running pipeline...")
     make_dirs()
 
     if not os.path.isdir(INPUT_DIR):

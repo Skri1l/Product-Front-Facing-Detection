@@ -1,3 +1,6 @@
+MODULE_NAME = "Detect"
+
+
 from ultralytics import YOLO
 import numpy as np
 import cv2
@@ -93,14 +96,12 @@ def nms_detections(detections, iou_threshold=0.40):
         return []
 
     indexes = np.array(indexes).flatten()
+    print(f"{MODULE_NAME}: Detected {np.size(indexes)} indexes")
     return [detections[int(i)] for i in indexes]
 
 
 def detect_products_tiled(enhanced):
-    """
-    Detect products with tiled YOLO inference.
-    Tiling improves detection of small shelf products.
-    """
+    print(f"{MODULE_NAME}: Detection...")
     model = YOLO(MODEL_PATH)
 
     h, w = enhanced.shape[:2]
