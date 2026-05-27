@@ -14,7 +14,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Product-Front-Facing-Detection/product_front_facing_detection/input_images
 INPUT_DIR = os.path.join(
     BASE_DIR,
-    "product_front_facing_detection",
     "input_images"
 )
 
