@@ -7,26 +7,22 @@ def segment_products(enhanced):
     print(f"{MODULE_NAME}: Image segmentation...")
     hsv = cv2.cvtColor(enhanced, cv2.COLOR_BGR2HSV)
 
-    # Colorful labels/products
-    red1 = cv2.inRange(hsv, (0, 60, 50), (12, 255, 255))
-    red2 = cv2.inRange(hsv, (168, 60, 50), (180, 255, 255))
-    blue = cv2.inRange(hsv, (85, 50, 50), (135, 255, 255))
-    yellow = cv2.inRange(hsv, (12, 50, 60), (38, 255, 255))
-    green = cv2.inRange(hsv, (38, 40, 50), (90, 255, 255))
-    orange = cv2.inRange(hsv, (5, 50, 60), (25, 255, 255))
+    red1 = cv2.inRange(hsv, (0, 80, 80), (10, 255, 255))
+    red2 = cv2.inRange(hsv, (170, 80, 80), (180, 255, 255))
+    red_mask = red1 | red2
 
-    # Light labels / white bottles, but not too permissive
-    white = cv2.inRange(hsv, (0, 0, 160), (180, 55, 255))
+    blue_mask = cv2.inRange(hsv, (90, 80, 80), (130, 255, 255))
 
-    color_mask = red1 | red2 | blue | yellow | green | orange | white
+    yellow_mask = cv2.inRange(hsv, (15, 80, 80), (35, 255, 255))
+    green_mask = cv2.inRange(hsv, (35, 80, 80), (85, 255, 255))
 
-    # Edge mask helps with labels and product contours
+    white_mask = cv2.inRange(hsv, (0, 0, 180), (180, 40, 255))
+
+    color_mask = red_mask | blue_mask | yellow_mask | green_mask | white_mask
+
     gray = cv2.cvtColor(enhanced, cv2.COLOR_BGR2GRAY)
-    gray = cv2.GaussianBlur(gray, (5, 5), 0)
-    edges = cv2.Canny(gray, 60, 160)
-    edge_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    edges = cv2.dilate(edges, edge_kernel, iterations=1)
+    _, otsu_mask = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-    mask = cv2.bitwise_or(color_mask, edges)
+    final_mask = cv2.bitwise_or(color_mask, otsu_mask)
     print(f"{MODULE_NAME}: Image segmented")
-    return mask
+    return final_mask
